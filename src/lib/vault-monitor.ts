@@ -201,6 +201,12 @@ export class VaultMonitor {
       });
     }
 
+    // Filter by `since` timestamp if provided
+    if (since) {
+      const sinceDate = new Date(since * 1000);
+      return alerts.filter((a) => new Date(a.timestamp) >= sinceDate);
+    }
+
     return alerts;
   }
 }

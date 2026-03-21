@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Address } from "viem";
 import { LidoClient } from "../lib/lido.js";
 
 export function registerBalanceTools(server: McpServer, lido: LidoClient) {
@@ -12,7 +11,8 @@ export function registerBalanceTools(server: McpServer, lido: LidoClient) {
     },
     async ({ address }) => {
       try {
-        const balances = await lido.getBalances(address as Address);
+        const validAddress = LidoClient.validateAddress(address);
+        const balances = await lido.getBalances(validAddress);
         const stats = await lido.getProtocolStats();
 
         const result = {
@@ -47,7 +47,8 @@ export function registerBalanceTools(server: McpServer, lido: LidoClient) {
     },
     async ({ address, days }) => {
       try {
-        const balances = await lido.getBalances(address as Address);
+        const validAddress = LidoClient.validateAddress(address);
+        const balances = await lido.getBalances(validAddress);
         const totalSteth = parseFloat(balances.total_steth_equivalent);
         const apyRate = 0.03; // ~3% APY approximation
 

@@ -4,6 +4,7 @@ import {
   http,
   parseEther,
   formatEther,
+  isAddress,
   type Address,
   type Hash,
   type PublicClient,
@@ -35,6 +36,23 @@ export class LidoClient {
       chain: mainnet,
       transport: http(rpcUrl ?? process.env.ETH_RPC_URL ?? DEFAULT_RPC_URL),
     });
+  }
+
+  /** Validate and parse an ETH amount string. Rejects zero, negative, and non-numeric values. */
+  private parseAmount(amountStr: string, label: string): bigint {
+    const num = Number(amountStr);
+    if (isNaN(num) || num <= 0) {
+      throw new Error(`Invalid ${label}: "${amountStr}". Must be a positive number (e.g. "1.5").`);
+    }
+    return parseEther(amountStr);
+  }
+
+  /** Validate an Ethereum address. */
+  static validateAddress(address: string): Address {
+    if (!isAddress(address)) {
+      throw new Error(`Invalid Ethereum address: "${address}". Must be a 0x-prefixed 40-hex-character string.`);
+    }
+    return address as Address;
   }
 
   private getWalletClient(): {
@@ -73,7 +91,7 @@ export class LidoClient {
     gas_estimate: string;
     message: string;
   }> {
-    const value = parseEther(amountEth);
+    const value = this.parseAmount(amountEth, "stake amount");
 
     if (dryRun) {
       const gas = await this.publicClient.estimateGas({
@@ -122,39 +140,40 @@ export class LidoClient {
     gas_estimate: string;
     message: string;
   }> {
-    const amount = parseEther(amountStEth);
-    const { account } = this.getWalletClient();
+    const amount = this.parseAmount(amountStEth, "unstake amount");
 
     if (dryRun) {
-      // Check allowance
-      const allowance = (await this.publicClient.readContract({
-        address: LIDO_STETH,
-        abi: STETH_ABI,
-        functionName: "allowance",
-        args: [account.address, LIDO_WITHDRAWAL_QUEUE],
-      })) as bigint;
+      // Dry run without requiring a private key
+      const gas = BigInt(350_000); // Withdrawal request gas is ~300-400K
+      let approvalNote = "Cannot check allowance without ETH_PRIVATE_KEY.";
 
-      const needsApproval = allowance < amount;
+      // If we have a key, check allowance
+      const pk = process.env.ETH_PRIVATE_KEY;
+      if (pk) {
+        const { account } = this.getWalletClient();
+        const allowance = (await this.publicClient.readContract({
+          address: LIDO_STETH,
+          abi: STETH_ABI,
+          functionName: "allowance",
+          args: [account.address, LIDO_WITHDRAWAL_QUEUE],
+        })) as bigint;
 
-      const gas = await this.publicClient.estimateGas({
-        account: account.address,
-        to: LIDO_WITHDRAWAL_QUEUE,
-        data: "0x00", // placeholder — real estimate needs approval first
-      }).catch(() => BigInt(300_000)); // fallback gas estimate
+        approvalNote = allowance < amount
+          ? "Needs stETH approval to WithdrawalQueue first."
+          : "stETH already approved.";
+      }
 
       return {
         simulated: true,
         withdrawal_amount: amountStEth,
         gas_estimate: gas.toString(),
         message: `Dry run: requesting withdrawal of ${amountStEth} stETH. ` +
-          (needsApproval
-            ? `Needs stETH approval to WithdrawalQueue first. `
-            : `stETH already approved. `) +
+          `${approvalNote} ` +
           `Estimated gas: ${gas}. Note: withdrawals take 1-5 days to finalize.`,
       };
     }
 
-    const { wallet } = this.getWalletClient();
+    const { wallet, account } = this.getWalletClient();
 
     // Approve stETH for the withdrawal queue
     const allowance = (await this.publicClient.readContract({
@@ -206,7 +225,7 @@ export class LidoClient {
     gas_estimate: string;
     message: string;
   }> {
-    const amount = parseEther(amountStEth);
+    const amount = this.parseAmount(amountStEth, "wrap amount");
 
     // Calculate expected wstETH output
     const wstethAmount = (await this.publicClient.readContract({
@@ -218,22 +237,26 @@ export class LidoClient {
     const wstethFormatted = formatEther(wstethAmount);
 
     if (dryRun) {
-      const { account } = this.getWalletClient();
-      const allowance = (await this.publicClient.readContract({
-        address: LIDO_STETH,
-        abi: STETH_ABI,
-        functionName: "allowance",
-        args: [account.address, LIDO_WSTETH],
-      })) as bigint;
-
-      const needsApproval = allowance < amount;
+      let approvalNote = "Cannot check allowance without ETH_PRIVATE_KEY.";
+      const pk = process.env.ETH_PRIVATE_KEY;
+      if (pk) {
+        const { account } = this.getWalletClient();
+        const allowance = (await this.publicClient.readContract({
+          address: LIDO_STETH,
+          abi: STETH_ABI,
+          functionName: "allowance",
+          args: [account.address, LIDO_WSTETH],
+        })) as bigint;
+        approvalNote = allowance < amount
+          ? "Needs stETH approval to wstETH contract first."
+          : "stETH already approved.";
+      }
 
       return {
         simulated: true,
         wsteth_amount: wstethFormatted,
         gas_estimate: "150000",
-        message: `Dry run: wrapping ${amountStEth} stETH → ~${wstethFormatted} wstETH. ` +
-          (needsApproval ? `Needs stETH approval to wstETH contract first.` : `stETH already approved.`),
+        message: `Dry run: wrapping ${amountStEth} stETH → ~${wstethFormatted} wstETH. ${approvalNote}`,
       };
     }
 
@@ -289,7 +312,7 @@ export class LidoClient {
     gas_estimate: string;
     message: string;
   }> {
-    const amount = parseEther(amountWstEth);
+    const amount = this.parseAmount(amountWstEth, "unwrap amount");
 
     const stethAmount = (await this.publicClient.readContract({
       address: LIDO_WSTETH,
@@ -530,7 +553,37 @@ export class LidoClient {
     simulated: boolean;
     message: string;
   }> {
-    const { account } = this.getWalletClient();
+    if (dryRun) {
+      // Check eligibility if we have a key, otherwise just report proposal status
+      const pk = process.env.ETH_PRIVATE_KEY;
+      if (pk) {
+        const { account } = this.getWalletClient();
+        const canVote = (await this.publicClient.readContract({
+          address: LIDO_DAO_VOTING,
+          abi: ARAGON_VOTING_ABI,
+          functionName: "canVote",
+          args: [BigInt(proposalId), account.address],
+        })) as boolean;
+
+        if (!canVote) {
+          return {
+            simulated: true,
+            message: `Cannot vote on proposal #${proposalId}. Either the vote is closed, you have no LDO tokens, or you already voted.`,
+          };
+        }
+        return {
+          simulated: true,
+          message: `Dry run: would vote ${support ? "YES" : "NO"} on proposal #${proposalId}. You are eligible to vote.`,
+        };
+      }
+
+      return {
+        simulated: true,
+        message: `Dry run: would vote ${support ? "YES" : "NO"} on proposal #${proposalId}. Set ETH_PRIVATE_KEY to check eligibility.`,
+      };
+    }
+
+    const { wallet, account } = this.getWalletClient();
 
     // Check if user can vote
     const canVote = (await this.publicClient.readContract({
@@ -542,19 +595,10 @@ export class LidoClient {
 
     if (!canVote) {
       return {
-        simulated: dryRun,
+        simulated: false,
         message: `Cannot vote on proposal #${proposalId}. Either the vote is closed, you have no LDO tokens, or you already voted.`,
       };
     }
-
-    if (dryRun) {
-      return {
-        simulated: true,
-        message: `Dry run: would vote ${support ? "YES" : "NO"} on proposal #${proposalId}. You are eligible to vote.`,
-      };
-    }
-
-    const { wallet } = this.getWalletClient();
     const hash = await wallet.writeContract({
       address: LIDO_DAO_VOTING,
       abi: ARAGON_VOTING_ABI,
