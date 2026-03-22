@@ -1,6 +1,12 @@
 # Lido MCP Server
 
-An MCP (Model Context Protocol) server that makes Lido staking operations natively callable by any AI agent. Supports staking, unstaking, wrapping, governance, and Lido Earn vault monitoring — all against real Ethereum mainnet contracts.
+**Your AI agent can stake, unstake, vote, and monitor yields — without you writing a single contract call.**
+
+An MCP (Model Context Protocol) server that makes Lido staking operations natively callable by any AI agent. Say `"Stake 1 ETH with Lido (dry run first)"` and your agent handles the rest — against real Ethereum mainnet contracts, not mocks.
+
+[![Tests](https://img.shields.io/badge/tests-23%20passing-brightgreen)](#tests)
+[![Tools](https://img.shields.io/badge/tools-12-blue)](#available-tools)
+[![Mainnet](https://img.shields.io/badge/network-Ethereum%20mainnet-green)](#contract-addresses-ethereum-mainnet)
 
 ## Features
 
@@ -62,6 +68,16 @@ In Cursor settings → MCP Servers, add:
 | `ETH_PRIVATE_KEY` | For writes | Hex-encoded private key for staking/voting transactions |
 
 Read-only operations (balances, stats, proposals) work without a private key.
+
+### Try it
+
+```
+You: "How much stETH does vitalik.eth hold?"
+Agent: [calls lido_balance] → 0.0 stETH, 0.0 wstETH, 4,291.7 ETH
+
+You: "Stake 1 ETH with Lido, dry run first"
+Agent: [calls lido_stake with dry_run=true] → Simulation passed. Gas: 82,341. Ready to execute.
+```
 
 ## Available Tools
 
@@ -157,6 +173,23 @@ lido-mcp/
 ```
 > Show me the latest Lido DAO proposals
 ```
+
+## Tests
+
+```bash
+npm run build
+node --test test/tools.test.cjs    # 23 tests
+```
+
+| Suite | Tests | What it checks |
+|-------|-------|----------------|
+| Project structure | 12 | All source files exist |
+| Tool registration | 5 | Correct tool count per module (4+3+2+3=12) |
+| Tool names | 1 | All 12 tool names present in source |
+| Dry run support | 1 | Write tools accept dry_run parameter |
+| Contract addresses | 2 | stETH + wstETH addresses match Lido docs |
+| Build output | 1 | dist/index.js exists after compilation |
+| Skill file | 1 | lido.skill.md contains Lido mental model |
 
 ## Agent Skill File
 
