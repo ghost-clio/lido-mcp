@@ -16,7 +16,7 @@ An MCP (Model Context Protocol) server that makes Lido staking operations native
 ### Install and Build
 
 ```bash
-git clone https://github.com/your-org/lido-mcp.git
+git clone https://github.com/ghost-clio/lido-mcp.git
 cd lido-mcp
 npm install
 npm run build
