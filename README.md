@@ -191,6 +191,24 @@ node --test test/tools.test.cjs    # 23 tests
 | Build output | 1 | dist/index.js exists after compilation |
 | Skill file | 1 | lido.skill.md contains Lido mental model |
 
+## FAQ
+
+**Why MCP over a REST API?**
+MCP is a standard protocol that lets AI agents call tools natively — no HTTP client, no auth tokens, no parsing. The agent says "stake 1 ETH" and the MCP server handles serialization, RPC calls, and response formatting. It works with Claude Desktop, Cursor, and any MCP-compatible client out of the box.
+
+**Can this compose with other DeFi MCPs?**
+Yes. Stake with this MCP, then pass the resulting wstETH address to an Aave MCP for lending. MCP tools are independent — agents orchestrate across them naturally.
+
+**Who's the target user?**
+Anyone building AI agents that interact with Lido — DeFi automation, portfolio management bots, governance participation agents, or staking chatbots. The skill file (`lido.skill.md`) makes it accessible even to agents with no DeFi training.
+
+## Known Limitations
+
+- **Gas estimation**: Dry runs simulate but don't report gas cost in the response. Agents can't yet make cost-aware staking decisions.
+- **Testnet**: Only mainnet contracts are configured. Set `ETH_RPC_URL` to a Holesky RPC and update contract addresses in `constants.ts` for testnet use.
+- **No caching**: Read operations hit the RPC every call. For high-frequency agents, add application-level caching.
+- **Vault scope**: Monitors Lido Earn vaults only, not SimpleDVT or CSM modules.
+
 ## Agent Skill File
 
 The `lido.skill.md` file teaches AI agents the Lido mental model — rebasing mechanics, stETH vs wstETH tradeoffs, safe staking patterns, common pitfalls, and workflow examples. Point your agent to this file for best results.
