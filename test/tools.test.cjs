@@ -121,6 +121,29 @@ describe("Build output", () => {
   });
 });
 
+describe("Integration — live RPC", { skip: !process.env.ETH_RPC_URL ? "Set ETH_RPC_URL for live integration tests" : false }, () => {
+  const RPC = process.env.ETH_RPC_URL;
+
+  it("getBalances returns data for a known address", async () => {
+    const { LidoClient } = await import("../dist/lib/lido.js");
+    const client = new LidoClient(RPC);
+    const address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"; // vitalik.eth
+    const balance = await client.getBalances(address);
+    assert.ok(balance, "Should return balance object");
+    assert.ok(balance.eth !== undefined, "Should include ETH balance");
+    assert.ok(balance.steth !== undefined, "Should include stETH balance");
+    assert.ok(balance.wsteth !== undefined, "Should include wstETH balance");
+  });
+
+  it("getProtocolStats returns Lido protocol data", async () => {
+    const { LidoClient } = await import("../dist/lib/lido.js");
+    const client = new LidoClient(RPC);
+    const stats = await client.getProtocolStats();
+    assert.ok(stats, "Should return stats object");
+    assert.ok(stats.total_staked_eth !== undefined, "Should include total staked ETH");
+  });
+});
+
 describe("Skill file", () => {
   it("lido.skill.md contains Lido mental model", () => {
     const skill = fs.readFileSync(path.join(__dirname, "..", "lido.skill.md"), "utf8");
