@@ -226,6 +226,12 @@ The `lido.skill.md` file teaches AI agents the Lido mental model — rebasing me
 - [MCP Specification](https://modelcontextprotocol.io)
 - [Lido DAO Governance](https://vote.lido.fi)
 
+## Part of the Agent Stack
+
+- [**AgentScope**](https://github.com/ghost-clio/agent-scope) — On-chain policy enforcement for agent wallets (Safe module)
+- [**Aegis**](https://github.com/ghost-clio/aegis-agent) — Autonomous treasury with pre-signing enforcement, smart DCA, yield hunting
+- [**Ghost Protocol**](https://github.com/ghost-clio/ghost-protocol) — Private reasoning (Venice.ai) + scoped execution
+
 ## License
 
 MIT
