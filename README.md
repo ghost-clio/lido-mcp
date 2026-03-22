@@ -4,6 +4,12 @@
 
 An MCP (Model Context Protocol) server that makes Lido staking operations natively callable by any AI agent. Say `"Stake 1 ETH with Lido (dry run first)"` and your agent handles the rest — against real Ethereum mainnet contracts, not mocks.
 
+
+https://github.com/user-attachments/assets/7dfd2244-6576-4c14-900a-705175a355f3
+
+
+
+
 [![Tests](https://img.shields.io/badge/tests-23%20passing-brightgreen)](#tests)
 [![Tools](https://img.shields.io/badge/tools-12-blue)](#available-tools)
 [![Mainnet](https://img.shields.io/badge/network-Ethereum%20mainnet-green)](#contract-addresses-ethereum-mainnet)
