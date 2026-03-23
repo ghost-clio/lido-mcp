@@ -447,9 +447,21 @@ export class LidoClient {
 
     const pendingRequests = lastRequestId - lastFinalizedId;
 
+    // Fetch live APY from Lido API (fallback to ~3.0% if unavailable)
+    let stethApy = "~3.0%";
+    try {
+      const apyResponse = await fetch("https://eth-api.lido.fi/v1/protocol/steth/apr/sma");
+      const apyData = await apyResponse.json() as { data: { smaApr: number } };
+      if (apyData?.data?.smaApr) {
+        stethApy = `${apyData.data.smaApr.toFixed(2)}%`;
+      }
+    } catch {
+      // Fallback to approximate value if API is unreachable
+    }
+
     return {
       total_staked_eth: formatEther(totalPooled),
-      steth_apy: "~3.0%", // APY comes from oracle reports — approximate from on-chain
+      steth_apy: stethApy,
       wsteth_price_steth: formatEther(wstethPerSteth),
       total_validators: beaconStat[1].toString(),
       withdrawal_queue_pending: `${pendingRequests} requests (${formatEther(unfinalizedStETH)} stETH)`,

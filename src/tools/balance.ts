@@ -50,7 +50,8 @@ export function registerBalanceTools(server: McpServer, lido: LidoClient) {
         const validAddress = LidoClient.validateAddress(address);
         const balances = await lido.getBalances(validAddress);
         const totalSteth = parseFloat(balances.total_steth_equivalent);
-        const apyRate = 0.03; // ~3% APY approximation
+        const stats = await lido.getProtocolStats();
+        const apyRate = parseFloat(stats.steth_apy) / 100 || 0.03;
 
         const dailyRate = apyRate / 365;
         const estimatedReward = totalSteth * dailyRate * days;
@@ -59,7 +60,7 @@ export function registerBalanceTools(server: McpServer, lido: LidoClient) {
         const result = {
           address,
           total_steth_equivalent: balances.total_steth_equivalent,
-          estimated_apy: "~3.0%",
+          estimated_apy: stats.steth_apy,
           period_days: days,
           estimated_reward_steth: estimatedReward.toFixed(6),
           annualized_reward_steth: annualizedReward.toFixed(6),

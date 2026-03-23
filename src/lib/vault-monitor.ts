@@ -106,8 +106,13 @@ export class VaultMonitor {
       aaveRate = "unavailable";
     }
 
-    // stETH APY — approximated from protocol (oracle reports)
-    const stethApy = "~3.0%";
+    // stETH APY — fetched live from Lido API
+    let stethApy = "~3.0%";
+    try {
+      const apyRes = await fetch("https://eth-api.lido.fi/v1/protocol/steth/apr/sma");
+      const apyData = await apyRes.json() as { data: { smaApr: number } };
+      if (apyData?.data?.smaApr) stethApy = `${apyData.data.smaApr.toFixed(2)}%`;
+    } catch { /* fallback */ }
 
     // Vault APY estimate — Earn vaults typically yield stETH APY + leveraged strategies
     const vaultApy = vaultName === "earnETH" ? "~4.5%" : "~8.0%";
